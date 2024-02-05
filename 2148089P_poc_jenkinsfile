@@ -1,0 +1,85 @@
+pipeline {
+
+   agent any
+   
+   stages {
+   
+      stage('ST1 2148089P') {
+          steps {
+            echo 'ST1 2148089P: Environment is prepared. Start to rollout to TEST server'
+          }
+      }
+      
+      stage('ST2 2148089P') {
+         steps {
+            sh '''#!/bin/bash
+            docker rmi BKUP-TEST-image
+            docker commit TESTsvr2148089P BKUP-TEST-image
+            puppet resource file /tmp/clone ensure=absent force=true;
+            puppet resource file /tmp/clone ensure=directory;
+	          cd /tmp/clone;
+	          git clone https://github.com/rp-sddo-23003337/POC_REPO.git;
+            targets=TESTsvr2148089P;
+            locate_script='/tmp/clone/POC_REPO/2148089P_script';
+            bolt script run $locate_script -t $targets -u clientadm -p user123 --no-host-key-check --run-as root;
+            '''
+            echo "ST2 2148089P: TEST server is backup and updated"
+         }
+      }
+      
+      stage('ST3 2148089P') {
+         steps {
+            sh '''#!/bin/bash
+            curl -is http://TESTsvr2148089P.localdomain | head -n 1 > /tmp/TEST-result-file
+            '''
+            echo "ST3 2148089P: Test result for TEST server is generated : TEST-result-file"
+         }
+      }
+      
+      stage('ST4 2148089P') {
+         steps {
+            echo "ST4 2148089P: TEST server’s testing result has been inspected"
+            script {
+               v2 = input (
+                       message: 'Action',
+                       parameters: [choice(name:'',choices: ['Proceed Production', 'Rollback Test'])]
+                    )
+            }
+         }
+      }
+      
+      stage('ST5 2148089P') {
+         steps {
+            script {
+               if (v2 == 'Proceed Production') {
+                  echo 'ST5 2148089P: Proceed to Production Phase'
+                  sh '''#!/bin/bash
+                  targets=PRODsvr2148089P;
+                  locate_script='/tmp/clone/POC_REPO/2148089P_script';
+                  bolt script run $locate_script -t $targets -u clientadm -p user123 --no-host-key-check --run-as root;
+                  '''
+               } else if (v2 == 'Rollback Test') {
+                  echo "ST5 2148089P: Rollback Test server"
+                  sh '''#!/bin/bash
+                  docker stop TESTsvr2148089P
+                  docker rm TESTsvr2148089P
+                  docker run -d --network customnetwork --privileged -h TESTsvr2148089P.localdomain --name TESTsvr2148089P --add-host=sddo-vm.localdomain:172.20.113.56 --ip=192.168.20.100 BKUP-TEST-image /sbin/init
+                  '''
+               }
+            }
+         }         
+      }
+      
+      stage('ST6 2148089P') {
+         steps {
+            script {
+               if (v2 == 'Proceed Production') {
+                  echo 'ST6 2148089P: Production server is updated'
+               } else if (v2 == 'Rollback Test') {
+                  echo "ST6 2148089P: TEST server is rollback"
+               }
+            }
+         }
+      }
+   }
+}
