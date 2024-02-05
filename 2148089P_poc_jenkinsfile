@@ -13,8 +13,8 @@ pipeline {
       stage('ST2 2148089P') {
          steps {
             sh '''#!/bin/bash
-            sudo docker rmi bkup-test-image
-            sudo docker commit TESTsvr2148089P bkup-test-image
+            docker rmi bkup-test-image
+            docker commit TESTsvr2148089P bkup-test-image
             puppet resource file /tmp/clone ensure=absent force=true;
             puppet resource file /tmp/clone ensure=directory;
 	    cd /tmp/clone;
@@ -61,9 +61,9 @@ pipeline {
                } else if (v2 == 'Rollback Test') {
                   echo "ST5 2148089P: Rollback Test server"
                   sh '''#!/bin/bash
-                  sudo docker stop TESTsvr2148089P
-                  sudo docker rm TESTsvr2148089P
-                  sudo docker run -d --network customnetwork --privileged -h TESTsvr2148089P.localdomain --name TESTsvr2148089P --add-host=sddo-vm.localdomain:172.20.113.56 --ip=192.168.20.100 bkup-test-image /sbin/init
+                  docker stop TESTsvr2148089P
+                  docker rm TESTsvr2148089P
+                  docker run -d --network customnetwork --privileged -h TESTsvr2148089P.localdomain --name TESTsvr2148089P --add-host=sddo-vm.localdomain:172.20.113.56 --ip=192.168.20.100 bkup-test-image /sbin/init
                   '''
                }
             }
